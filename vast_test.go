@@ -17,6 +17,89 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestUnmarshalVAST(t *testing.T) {
+	tests := []struct {
+		name string
+		args []byte
+		want VAST
+	}{
+		{
+			name: "OK - basic VAST",
+			args: []byte(`<?xml version="1.0" encoding="UTF-8"?>><VAST version="3.0" xmlns="http://www.iab.com/VAST"><Ad id="123" type="front"><InLine><AdSystem><![CDATA[DSP]]></AdSystem><AdTitle><![CDATA[ad title]]></AdTitle><Impression id="456"><![CDATA[http://impression.track.cn]]></Impression><Creatives><Creative id="123456"><Linear><Duration>00:00:15</Duration><TrackingEvents><Tracking event="start"><![CDATA[http://track.xxx.com/q/start?xx]]></Tracking></TrackingEvents><MediaFiles><MediaFile delivery="progressive" type="video/mp4" width="1024" height="576"><![CDATA[http://mp4.res.xxx.com/new_video/2020/01/14/1485/335928CBA9D02E95E63ED9F4D45DF6DF_20200114_1_1_1051.mp4]]></MediaFile></MediaFiles></Linear></Creative></Creatives></InLine></Ad></VAST>`),
+			want: VAST{
+				XMLName: xml.Name{
+					Space: "http://www.iab.com/VAST",
+					Local: "VAST",
+				},
+				Version: "3.0",
+				XMLNS:   "http://www.iab.com/VAST",
+				Ads: []Ad{
+					{
+						ID:   "123",
+						Type: "front",
+						InLine: &InLine{
+							AdSystem: &AdSystem{
+								Name: "DSP",
+							},
+							AdTitle: PlainString{
+								CDATA: "ad title",
+							},
+							Impressions: []Impression{
+								{
+									ID:  "456",
+									URI: "http://impression.track.cn",
+								},
+							},
+							Creatives: []Creative{
+								{
+									ID: "123456",
+									Linear: &Linear{
+										Duration: Duration(time.Second * 15),
+										TrackingEvents: &TrackingEvents{
+											Tracking: []Tracking{
+												{
+													Event: "start",
+													URI:   "http://track.xxx.com/q/start?xx",
+												},
+											},
+										},
+										MediaFiles: &MediaFiles{
+											MediaFile: []MediaFile{
+												{
+													Delivery: "progressive",
+													Type:     "video/mp4",
+													Width:    1024,
+													Height:   576,
+													URI:      "http://mp4.res.xxx.com/new_video/2020/01/14/1485/335928CBA9D02E95E63ED9F4D45DF6DF_20200114_1_1_1051.mp4",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "KO - root tag not VAST",
+			args: []byte(`<?xml version="1.0" encoding="UTF-8"?>><SAMPLE version="3.0" xmlns="http://www.iab.com/VAST"><Ad id="123" type="front"><InLine><AdSystem><![CDATA[DSP]]></AdSystem><AdTitle><![CDATA[ad title]]></AdTitle><Impression id="456"><![CDATA[http://impression.track.cn]]></Impression><Creatives><Creative id="123456"><Linear><Duration>00:00:15</Duration><TrackingEvents><Tracking event="start"><![CDATA[http://track.xxx.com/q/start?xx]]></Tracking></TrackingEvents><MediaFiles><MediaFile delivery="progressive" type="video/mp4" width="1024" height="576"><![CDATA[http://mp4.res.xxx.com/new_video/2020/01/14/1485/335928CBA9D02E95E63ED9F4D45DF6DF_20200114_1_1_1051.mp4]]></MediaFile></MediaFiles></Linear></Creative></Creatives></InLine></Ad></VAST>`),
+			want: VAST{},
+		},
+	}
+
+	for _, tt := range tests {
+		testCase := tt
+		t.Run(testCase.name, func(t *testing.T) {
+			result := VAST{}
+			_ = xml.Unmarshal(testCase.args, &result)
+			assert.EqualValues(t, testCase.want, result)
+		})
+	}
+
+}
+
 func TestQuickStartComplex(t *testing.T) {
 	skip := Duration(5 * time.Second)
 	v := VAST{
@@ -178,7 +261,7 @@ func TestQuickStart(t *testing.T) {
 		},
 	}
 
-	want := []byte(`{"Version":"3.0","Ad":[{"InLine":{"AdSystem":{"Data":"DSP"},"Extensions":[{"Type":"ClassName","Data":"AdsVideoView"},{"Type":"ExtURL","Data":"http://xxxxxxxx"}],"Impressions":[{"ID":"11111","URI":"http://impressionv1.track.com"},{"ID":"11112","URI":"http://impressionv2.track.com"}],"AdTitle":{"Data":"adTitle"},"Creatives":[{"ID":"987","Linear":{"SkipOffset":"00:00:05","Duration":"00:00:15","TrackingEvents":{"Tracking":[{"Event":"start","URI":"http://track.xxx.com/q/start?xx"},{"Event":"firstQuartile","URI":"http://track.xxx.com/q/firstQuartile?xx"},{"Event":"midpoint","URI":"http://track.xxx.com/q/midpoint?xx"},{"Event":"thirdQuartile","URI":"http://track.xxx.com/q/thirdQuartile?xx"},{"Event":"complete","URI":"http://track.xxx.com/q/complete?xx"}]},"MediaFiles":{"MediaFile":[{"Delivery":"progressive","Type":"video/mp4","Width":1024,"Height":576,"URI":"http://mp4.res.xxx.com/new_video/2020/01/14/1485/335928CBA9D02E95E63ED9F4D45DF6DF_20200114_1_1_1051.mp4","Label":"123"}]}}}]},"ID":"123","Type":"front"}],"Mute":true}`)
+	want := []byte(`{"XMLName":{"Space":"","Local":""},"Version":"3.0","Ad":[{"InLine":{"AdSystem":{"Data":"DSP"},"Extensions":[{"Type":"ClassName","Data":"AdsVideoView"},{"Type":"ExtURL","Data":"http://xxxxxxxx"}],"Impressions":[{"ID":"11111","URI":"http://impressionv1.track.com"},{"ID":"11112","URI":"http://impressionv2.track.com"}],"AdTitle":{"Data":"adTitle"},"Creatives":[{"ID":"987","Linear":{"SkipOffset":"00:00:05","Duration":"00:00:15","TrackingEvents":{"Tracking":[{"Event":"start","URI":"http://track.xxx.com/q/start?xx"},{"Event":"firstQuartile","URI":"http://track.xxx.com/q/firstQuartile?xx"},{"Event":"midpoint","URI":"http://track.xxx.com/q/midpoint?xx"},{"Event":"thirdQuartile","URI":"http://track.xxx.com/q/thirdQuartile?xx"},{"Event":"complete","URI":"http://track.xxx.com/q/complete?xx"}]},"MediaFiles":{"MediaFile":[{"Delivery":"progressive","Type":"video/mp4","Width":1024,"Height":576,"URI":"http://mp4.res.xxx.com/new_video/2020/01/14/1485/335928CBA9D02E95E63ED9F4D45DF6DF_20200114_1_1_1051.mp4","Label":"123"}]}}}]},"ID":"123","Type":"front"}],"Mute":true}`)
 	got, err := json.Marshal(v)
 	t.Logf("%s", got)
 	if err != nil {
@@ -198,7 +281,7 @@ func TestEmptyVast(t *testing.T) {
 			{CDATA: "http://xx.xx.com/e/error?e=__ERRORCODE__&co=__CONTENTPLAYHEAD__&ca=__CACHEBUSTING__&a=__ASSETURI__&t=__TIMESTAMP__&o=__OTHER__"},
 		},
 	}
-	want := []byte(`{"Version":"3.0","Errors":[{"Data":"http://xx.xx.com/e/error?e=__ERRORCODE__\u0026co=__CONTENTPLAYHEAD__\u0026ca=__CACHEBUSTING__\u0026a=__ASSETURI__\u0026t=__TIMESTAMP__\u0026o=__OTHER__"}]}`)
+	want := []byte(`{"XMLName":{"Space":"","Local":""},"Version":"3.0","Errors":[{"Data":"http://xx.xx.com/e/error?e=__ERRORCODE__\u0026co=__CONTENTPLAYHEAD__\u0026ca=__CACHEBUSTING__\u0026a=__ASSETURI__\u0026t=__TIMESTAMP__\u0026o=__OTHER__"}]}`)
 	got, err := json.Marshal(v)
 	if err != nil {
 		t.Errorf("Marshal() error = %v", err)
@@ -325,7 +408,7 @@ func TestCreateVastJson(t *testing.T) {
 		want    []byte
 		wantErr bool
 	}{
-		{name: "testCase1", want: []byte(`{"Version":"3.0","xmlns":"http://www.iab.com/VAST","Ad":[{"InLine":{"AdSystem":{"Data":"DSP"},"Impressions":[{"ID":"456","URI":"http://impression.track.cn"}],"AdTitle":{"Data":"ad title"},"Creatives":[{"ID":"123456","Linear":{"Duration":"00:00:15","TrackingEvents":{"Tracking":[{"Event":"start","URI":"http://track.xxx.com/q/start?xx"}]},"MediaFiles":{"MediaFile":[{"Delivery":"progressive","Type":"video/mp4","Width":1024,"Height":576,"URI":"http://mp4.res.xxx.com/new_video/2020/01/14/1485/335928CBA9D02E95E63ED9F4D45DF6DF_20200114_1_1_1051.mp4","Label":"123"}]}}}]},"ID":"123"}]}`),
+		{name: "testCase1", want: []byte(`{"XMLName":{"Space":"","Local":""},"Version":"3.0","xmlns":"http://www.iab.com/VAST","Ad":[{"InLine":{"AdSystem":{"Data":"DSP"},"Impressions":[{"ID":"456","URI":"http://impression.track.cn"}],"AdTitle":{"Data":"ad title"},"Creatives":[{"ID":"123456","Linear":{"Duration":"00:00:15","TrackingEvents":{"Tracking":[{"Event":"start","URI":"http://track.xxx.com/q/start?xx"}]},"MediaFiles":{"MediaFile":[{"Delivery":"progressive","Type":"video/mp4","Width":1024,"Height":576,"URI":"http://mp4.res.xxx.com/new_video/2020/01/14/1485/335928CBA9D02E95E63ED9F4D45DF6DF_20200114_1_1_1051.mp4","Label":"123"}]}}}]},"ID":"123"}]}`),
 			wantErr: false},
 	}
 	for _, tt := range tests {

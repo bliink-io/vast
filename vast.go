@@ -5,6 +5,7 @@ import "encoding/xml"
 
 // VAST is the root <VAST> tag
 type VAST struct {
+	XMLName xml.Name `xml:"VAST"`
 	// The version of the VAST spec (should be either "2.0" or "3.0")
 	Version string `xml:"version,attr" json:",omitempty"`
 	// XML namespace. Most likely 'http://www.iab.com/VAST'
